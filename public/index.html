@@ -117,22 +117,26 @@
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
 
     <div class="w-full max-w-4xl bg-white rounded-xl shadow-2xl flex overflow-hidden" style="height: 80vh;">
+        <!-- Chat Interface -->
         <div class="w-2/3 flex flex-col border-r border-gray-200">
             <header class="bg-gray-800 text-white p-4 text-center rounded-tl-xl">
                 <h1 class="text-xl font-semibold">AI Property Onboarding Agent</h1>
             </header>
 
             <div id="chatHistory" class="flex-grow p-6 space-y-4 overflow-y-auto">
+                <!-- Initial AI Message -->
                 <div class="chat-bubble ai-bubble">
                     Hello! I'm here to help you find your dream property. To start, could you tell me a bit about what you're looking for? For example, are you looking to buy or rent, the type of property, number of bedrooms, and preferred locations? Feel free to describe your ideal place! Also, what's prompting your move at this time? You can also share links to properties you like or describe a style using the button below.
                 </div>
             </div>
 
+            <!-- Loading Indicator for Chat -->
             <div id="loadingIndicator" class="p-4 text-center hidden">
                 <div class="loading-dots"><span></span><span></span><span></span></div>
                 <p class="text-sm text-gray-500 mt-2">AI is thinking...</p>
             </div>
 
+            <!-- User Input Area -->
             <footer class="p-4 border-t border-gray-200">
                 <div class="flex items-center space-x-2">
                     <input type="text" id="userInput" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" placeholder="Describe your dream property or paste a link...">
@@ -146,6 +150,7 @@
             </footer>
         </div>
 
+        <!-- Criteria and Actions Panel -->
         <div class="w-1/3 bg-gray-50 p-6 flex flex-col rounded-r-xl">
             <h2 class="text-xl font-semibold text-gray-700 mb-4 text-center border-b pb-3">Extracted Criteria</h2>
             <div id="extractedCriteria" class="space-y-3 text-sm text-gray-600 overflow-y-auto flex-grow mb-4">
@@ -161,6 +166,7 @@
         </div>
     </div>
 
+    <!-- Modals -->
     <div id="jsonModal" class="modal">
         <div class="modal-content"><span class="close-button" data-modal-id="jsonModal">&times;</span>
             <h3 class="text-lg font-semibold mb-2">Extracted JSON Data</h3>
@@ -191,43 +197,11 @@
     </div>
 
     <script>
-        // Send message to Gemini Chat (serverless function)
-        async function sendMessageToChatAI(conversationForAPI) {
-            const apiUrl = '/.netlify/functions/callGeminiChat';
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: conversationForAPI, generationConfig: { temperature: 0.6 }, model: "gemini-2.0-flash" })
-            });
-            return response.json();
-        }
-
-        // Visualize Dream Property (image generation)
-        async function visualizeDreamProperty(promptText) {
-            const imageApiUrl = '/.netlify/functions/generateImage';
-            const response = await fetch(imageApiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ instances: [{ prompt: promptText }], parameters: { "sampleCount": 1 } })
-            });
-            return response.json();
-        }
-
-        // Get Local Area Insights
-        async function getLocalAreaInsights(conversationForAPI) {
-            const apiUrl = '/.netlify/functions/getAreaInsights';
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: conversationForAPI, generationConfig: { temperature: 0.7 }, model: "gemini-2.0-flash" })
-            });
-            return response.json();
-        }
         // DOM Elements
         const chatHistory = document.getElementById('chatHistory');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
-        const describeImageButton = document.getElementById('describeImageButton'); // New button
+        const describeImageButton = document.getElementById('describeImageButton');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const extractedCriteriaDiv = document.getElementById('extractedCriteria');
         
@@ -346,8 +320,8 @@
                 return;
             }
 
-            function addCriteriaItem(label, value, subKey = null) {
-                 let displayValue = subKey ? (value ? value[subKey] : null) : value;
+            function addCriteriaItem(label, value) {
+                 let displayValue = value;
                 if (displayValue !== null && displayValue !== undefined &&
                     (typeof displayValue !== 'object' || Object.keys(displayValue).length > 0 || Array.isArray(displayValue)) &&
                     (!Array.isArray(displayValue) || displayValue.length > 0) ) {
@@ -399,7 +373,7 @@
             addCriteriaItem('Non-Negotiables', criteria.nonNegotiables);
              if (criteria.flexibility) {
                 const flexItems = Object.entries(criteria.flexibility)
-                    .filter(([k,v]) => v === true)
+                    .filter(([k,v]) => v === true) // Only show if flexible (true)
                     .map(([k,v]) => k.charAt(0).toUpperCase() + k.slice(1))
                     .join(', ');
                 if (flexItems) addCriteriaItem('Flexible On', flexItems);
@@ -413,7 +387,7 @@
                  addCriteriaItem('Client Email', criteria.contactInfo.email);
                  addCriteriaItem('Client Phone', criteria.contactInfo.phone);
             }
-            addCriteriaItem('Style (from media)', criteria.stylePreferencesFromMedia); // Updated to reflect this field
+            addCriteriaItem('Style (from media)', criteria.stylePreferencesFromMedia);
             addCriteriaItem('Other Notes', criteria.notes);
 
             if (extractedCriteriaDiv.children.length === 0) {
@@ -422,13 +396,14 @@
             visualizeButton.disabled = !(criteria.propertyType && (criteria.keyFeatures?.length > 0 || criteria.stylePreferencesFromMedia?.length > 0));
             areaInsightsButton.disabled = !(criteria.locationPreferences?.areas?.length > 0);
         }
-
+        
+        // CORRECTED: Send message to Gemini Chat (via Netlify serverless function)
         async function sendMessageToChatAI(overrideMessageText = null) {
             const messageText = overrideMessageText || userInput.value.trim();
             if (!messageText) return;
 
             appendMessage(messageText, 'user');
-            if (!overrideMessageText) userInput.value = ''; // Clear input only if not an override
+            if (!overrideMessageText) userInput.value = ''; 
             
             loadingIndicator.classList.remove('hidden');
             sendButton.disabled = true;
@@ -438,24 +413,35 @@
             conversationForAPI.push({ role: "user", parts: [{ text: messageText }] });
 
             try {
-                const apiKey = ""; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const payload = { contents: conversationForAPI, generationConfig: { temperature: 0.6 } };
+                // Calls your Netlify function
+                const apiUrl = '/.netlify/functions/callGeminiChat';
+                // Payload expected by your callGeminiChat.js Netlify function
+                const payload = { 
+                    contents: conversationForAPI, 
+                    generationConfig: { temperature: 0.6 } 
+                };
 
                 const response = await fetch(apiUrl, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload)
                 });
+
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    const errorData = await response.json(); // Error from Netlify function/Google API
                     throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
                 }
-                const result = await response.json();
+                const result = await response.json(); // Response from Netlify function (which is Google's response)
+                
+                // Process the response from the AI (passed through your Netlify function)
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     let fullResponseText = result.candidates[0].content.parts[0].text;
                     conversationForAPI.push({ role: "model", parts: [{ text: fullResponseText }] });
+                    
                     const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/;
                     const jsonMatch = fullResponseText.match(jsonBlockRegex);
                     let conversationalText = fullResponseText.replace(jsonBlockRegex, "").trim();
+                    
                     if (jsonMatch?.[1]) {
                         try {
                             currentCriteria = JSON.parse(jsonMatch[1]);
@@ -464,10 +450,10 @@
                         } catch (e) {
                             console.error("Failed to parse JSON from AI:", e);
                             conversationalText += "\n\n(Error processing summary.)";
-                            updateExtractedCriteriaUI({});
+                            updateExtractedCriteriaUI({}); // Clear criteria on parse error
                         }
                     } else {
-                         updateExtractedCriteriaUI({}); 
+                         updateExtractedCriteriaUI({}); // Clear criteria if no JSON block found
                     }
                     appendMessage(conversationalText || "Okay, noted.", 'ai');
                 } else {
@@ -477,8 +463,11 @@
                 console.error('Chat AI Error:', error);
                 showErrorModal(`Chat AI: ${error.message}`);
                 appendMessage("Sorry, I encountered an error with chat. Please try again.", 'ai');
+                // Attempt to remove the last user message from history if AI call failed
                 if (conversationForAPI.length > 0 && conversationForAPI[conversationForAPI.length -1].role === "user") {
-                    conversationForAPI.pop(); 
+                    // This is a simple pop. More robust error handling might be needed
+                    // depending on how you want to manage conversation state on failure.
+                    // conversationForAPI.pop(); 
                 }
             } finally {
                 loadingIndicator.classList.add('hidden');
@@ -489,10 +478,10 @@
             }
         }
 
+        // CORRECTED: Visualize Dream Property (via Netlify serverless function)
         async function visualizeDreamProperty() {
-            // ... (no changes to this function from v4)
-            if (!currentCriteria.propertyType) {
-                showErrorModal("Please describe the type of property first.");
+            if (!currentCriteria.propertyType && !(currentCriteria.stylePreferencesFromMedia?.length > 0) && !(currentCriteria.keyFeatures?.length > 0) ) {
+                showErrorModal("Please describe the type of property, style or key features first.");
                 return;
             }
             imageModal.style.display = "block";
@@ -501,7 +490,7 @@
             imageLoadingIndicator.classList.remove('hidden');
             visualizeButton.disabled = true;
 
-            let promptText = `A photorealistic image of a ${currentCriteria.propertyType}`;
+            let promptText = `A photorealistic image of a ${currentCriteria.propertyType || 'property'}`;
             if (currentCriteria.stylePreferencesFromMedia?.length > 0) {
                 promptText += ` with ${currentCriteria.stylePreferencesFromMedia.join(', ')} style`;
             }
@@ -514,17 +503,26 @@
             promptText += ". Exterior shot if house/bungalow, interior if apartment/condo unless specified otherwise. Focus on attractive, aspirational real estate photography style.";
 
             try {
-                const apiKey = ""; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-                const payload = { instances: [{ prompt: promptText }], parameters: { "sampleCount": 1 } };
+                // Calls your Netlify function
+                const apiUrl = '/.netlify/functions/generateImage';
+                // Payload expected by your generateImage.js Netlify function
+                const payload = { 
+                    instances: [{ prompt: promptText }], 
+                    parameters: { "sampleCount": 1 } 
+                };
+
                 const response = await fetch(apiUrl, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload)
                 });
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
                 }
-                const result = await response.json();
+                const result = await response.json(); // Response from Netlify function
+                
                 if (result.predictions?.[0]?.bytesBase64Encoded) {
                     generatedImage.src = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
                     generatedImage.classList.remove('hidden');
@@ -541,8 +539,8 @@
             }
         }
 
+        // CORRECTED: Get Local Area Insights (via Netlify serverless function)
         async function getLocalAreaInsights() {
-            // ... (no changes to this function from v4)
             const location = currentCriteria.locationPreferences?.areas?.[0];
             if (!location) {
                 showErrorModal("Please specify a location first.");
@@ -553,20 +551,33 @@
             insightsError.classList.add('hidden');
             insightsLoadingIndicator.classList.remove('hidden');
             areaInsightsButton.disabled = true;
+
             const promptText = `Provide a brief, appealing summary of the ${location} area for someone considering moving there. Highlight key amenities (e.g., parks, schools, transport, shops), lifestyle, and the general vibe. Focus on positive aspects relevant to a home buyer or renter. Keep it concise, around 3-4 paragraphs.`;
-            let insightsConversation = [{ role: "user", parts: [{ text: promptText }] }];
+            
+            // This is a one-off prompt, not using the main chat history
+            let insightsConversationForAPI = [{ role: "user", parts: [{ text: promptText }] }];
+
             try {
-                const apiKey = ""; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const payload = { contents: insightsConversation, generationConfig: { temperature: 0.7 } };
+                // Calls your Netlify function
+                const apiUrl = '/.netlify/functions/getAreaInsights';
+                // Payload expected by your getAreaInsights.js Netlify function
+                const payload = { 
+                    contents: insightsConversationForAPI, 
+                    generationConfig: { temperature: 0.7 } 
+                };
+
                 const response = await fetch(apiUrl, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload)
                 });
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
                 }
-                const result = await response.json();
+                const result = await response.json(); // Response from Netlify function
+                
                 if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     areaInsightsOutput.textContent = result.candidates[0].content.parts[0].text;
                 } else {
@@ -585,14 +596,17 @@
         // --- Event Listeners ---
         sendButton.addEventListener('click', () => sendMessageToChatAI());
         userInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') sendMessageToChatAI();
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent default form submission if it were in a form
+                sendMessageToChatAI();
+            }
         });
 
         describeImageButton.addEventListener('click', () => {
             const currentInput = userInput.value.trim();
             const prefix = "I'm looking at a property style I like. It looks like: ";
             if (currentInput.startsWith(prefix)) {
-                userInput.focus(); // Already has prefix, just focus
+                userInput.focus(); 
             } else if (currentInput) {
                 userInput.value = prefix + currentInput;
             } else {
@@ -608,6 +622,7 @@
         visualizeButton.addEventListener('click', visualizeDreamProperty);
         areaInsightsButton.addEventListener('click', getLocalAreaInsights);
 
+        // Modal close functionality
         document.querySelectorAll('.close-button').forEach(button => {
             button.onclick = () => {
                 document.getElementById(button.dataset.modalId).style.display = 'none';
@@ -618,6 +633,7 @@
                 event.target.style.display = "none";
             }
         }
+        // Initialize UI
         updateExtractedCriteriaUI({});
     </script>
 </body>
