@@ -17,7 +17,7 @@ exports.handler = async function(event, context) {
         return { statusCode: 400, body: JSON.stringify({ error: 'Missing "contents" in request body' }) };
     }
 
-    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
 
     const response = await fetch(geminiApiUrl, {
       method: 'POST',
