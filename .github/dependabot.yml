@@ -1,0 +1,37 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  # Maintain dependencies for npm
+  - package-ecosystem: "npm" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "daily"
+    # Add assignees
+    assignees:
+      - "arsenal86" # Replace with your GitHub username or team
+    # Add reviewers
+    reviewers:
+      - "arsenal86" # Replace with your GitHub username or team
+    # Add labels to PRs
+    labels:
+      - "npm"
+      - "dependencies"
+    # Allow up to 5 open PRs for npm dependencies
+    open-pull-requests-limit: 5
+    # Customize commit messages
+    commit-message:
+      # Prefix all commit messages with "npm: "
+      prefix: "npm"
+      # Include a list of updated dependencies
+      # in the commit message body
+      include: "scope"
+
+  # You can add more ecosystems here if your project uses them, for example:
+  # - package-ecosystem: "github-actions"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
